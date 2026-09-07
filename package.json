@@ -1,0 +1,6 @@
+{
+  "name": "inkline-fal-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Proxy server-side para llamar a fal.ai sin exponer la API key"
+}
