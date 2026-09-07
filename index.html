@@ -593,6 +593,21 @@ footer{margin-top:30px;text-align:center;color:var(--ink-dim);font-size:12px;fon
 
     try{
       const imgDataUrl = imageToDataURL(originalImage, 1024);
+
+      // paso 1: subir la imagen a fal.ai para obtener una URL real (no mandar el archivo pegado)
+      status.textContent = 'Subiendo tu imagen...';
+      const uploadResp = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ action: 'upload', dataUrl: imgDataUrl })
+      });
+      const uploadData = await uploadResp.json();
+      if(!uploadResp.ok || !uploadData.url){
+        throw new Error('No se pudo subir la imagen: ' + JSON.stringify(uploadData));
+      }
+
+      // paso 2: generar usando esa URL real como control_image_url
+      status.textContent = 'Generando con IA… puede tardar 10-30 segundos.';
       const style = document.getElementById('stylePreset').value;
       const resp = await fetch(proxyUrl, {
         method: 'POST',
@@ -601,7 +616,7 @@ footer{margin-top:30px;text-align:center;color:var(--ink-dim);font-size:12px;fon
           model: 'fal-ai/flux-pro/v1/canny',
           input: {
             prompt: STYLE_PROMPTS[style] || STYLE_PROMPTS.lines,
-            control_image_url: imgDataUrl
+            control_image_url: uploadData.url
           }
         })
       });
