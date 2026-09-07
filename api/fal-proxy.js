@@ -10,7 +10,48 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'FAL_KEY no está configurada en el servidor' });
   }
 
-  const { model, input } = req.body || {};
+  const body = req.body || {};
+
+  // ---- MODO 1: subir una imagen a fal.ai y devolver su URL real ----
+  if (body.action === 'upload') {
+    try {
+      const match = /^data:(.+);base64,(.*)$/.exec(body.dataUrl || '');
+      if (!match) return res.status(400).json({ error: 'dataUrl inválida' });
+      const contentType = match[1];
+      const buffer = Buffer.from(match[2], 'base64');
+
+      // paso 1: pedir un token de subida temporal
+      const tokenRes = await fetch('https://rest.alpha.fal.ai/storage/auth/token?storage_type=fal-cdn-v3', {
+        method: 'POST',
+        headers: { 'Authorization': `Key ${FAL_KEY}` }
+      });
+      const tokenData = await tokenRes.json();
+      if (!tokenRes.ok) {
+        return res.status(tokenRes.status).json({ step: 'auth/token', error: tokenData });
+      }
+
+      // paso 2: subir el archivo real con ese token
+      const uploadRes = await fetch(`${tokenData.base_url}/files/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tokenData.token}`,
+          'Content-Type': contentType
+        },
+        body: buffer
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok) {
+        return res.status(uploadRes.status).json({ step: 'files/upload', error: uploadData });
+      }
+
+      return res.status(200).json({ url: uploadData.access_url || uploadData.url || uploadData.fileUrl });
+    } catch (err) {
+      return res.status(500).json({ step: 'upload-exception', error: err.message });
+    }
+  }
+
+  // ---- MODO 2: generar con un modelo de fal.ai (comportamiento normal) ----
+  const { model, input } = body;
   if (!model || !input) {
     return res.status(400).json({ error: 'Faltan "model" o "input" en el body' });
   }
