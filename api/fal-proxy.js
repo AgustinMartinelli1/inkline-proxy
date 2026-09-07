@@ -23,7 +23,11 @@ module.exports = async (req, res) => {
       // paso 1: pedir un token de subida temporal
       const tokenRes = await fetch('https://rest.alpha.fal.ai/storage/auth/token?storage_type=fal-cdn-v3', {
         method: 'POST',
-        headers: { 'Authorization': `Key ${FAL_KEY}` }
+        headers: {
+          'Authorization': `Key ${FAL_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: '{}'
       });
       const tokenData = await tokenRes.json();
       if (!tokenRes.ok) {
